@@ -117,6 +117,11 @@ typedef struct
 	char type;
 } Piece;
 
+typedef struct {
+	 int row;
+	 int col;
+} crds;
+
 typedef struct
 {
 	char abbrev;
@@ -124,35 +129,30 @@ typedef struct
 } PieceName;
 
 PieceName* names;
-Piece** board;
+Piece board[8][8];
 
-Piece** initBoard(void)
+void initBoard(void)
  {
-	Piece **board = (Piece **)malloc(8 * sizeof(Piece *)); 
-	for(i=0; i<8; i++)
-	{
-		*(board+i) = (Piece *)malloc(8 * sizeof(Piece));
-	}
+
 	for (i = 0; i < 8; i++)
 	{
 		if (i < 5) 
-			(*board + i)->type = i+2;
+			board[0][i].type = i+2;
 		else
 			(*board + i)->type = 9 - i;
-		(*board + i)->side = BLACK;
-		(*(board + 1) + i)->side = BLACK;	//Sets the value for the black pawn
-		(*(board + 1) + i)->type = PAWN;
+		board[0][i].side = BLACK;
+		board[1][i].side = BLACK;	//Sets the value for the black pawn
+		board[1][i].type = PAWN;
 
 
 		if (i < 5)
-			(*(board + 7) + i)->type = i + 2;
+			board[7][i].type = i + 2;
 		else
-			(*(board + 7) + i)->type = 9 - i;
-		(*(board + 7) + i)->side = WHITE;
-		(*(board + 6) + i)->side = WHITE;
-		(*(board + 6) + i)->type = PAWN;
+			board[7][i].type = 9 - i;
+		board[7][i].side = WHITE;
+		board[6][i].side = WHITE;
+		board[6][i].type = PAWN;
 	}
-	return board;
 }
 
 void initNames(void)
@@ -202,20 +202,153 @@ void printBoard(void)
 	}
 }
 
+crds* getLegalMovesPawn(crds*);
+
+crds* getLegalMoves(crds* space)
+{
+	if(board[space->row][space->col].type == PAWN)
+	{
+		return getLegalMovesPawn(space);
+	}
+}
+
+crds* getLegalMovesPawn(crds* space)
+{
+	Piece pawn = board[space->row][space->col];
+	crds* ret = (crds *) malloc(sizeof(crds)*5);
+	 int row = space->row;
+	 int col = space->col;
+
+	int spot = 0;
+
+	if(pawn.side == WHITE)
+	{
+		if(board[row-1][col].type == EMPTY)
+		{
+			(*ret).row = row-1;
+			(*ret).col = col;
+			spot+=1;
+		}
+		if(space->col > 0)
+		{
+			if(board[row-1][col-1].side == BLACK)		// Up 1 and to the left
+			{
+				(*(ret+spot)).row = row-1;
+				(*(ret+spot)).col = col-1;
+				spot+=1;
+			}
+		}
+		if(space->col < 7)
+		{
+			if(board[row-1][col+1].side == BLACK)		// Up 1 and to the right
+			{
+				(*(ret+spot)).row = row-1;
+				(*(ret+spot)).col = col+1;
+				spot+=1;
+			}
+		}
+		if(space->row == 6 && board[row-2][col].type == EMPTY && board[row-1][col].type == EMPTY)	//two spots above are clear
+		{
+				(*(ret+spot)).row = row-2;
+				(*(ret+spot)).col = col;
+				spot+=1;
+		}
+
+		(*(ret+spot)).row = -1;
+		(*(ret+spot)).col = -1;
+
+	}
+	return ret;
+}
+
+crds* getLegalMovesRook(crds* space)
+{
+
+}
+
+crds* getLegalMovesKnight(crds* space)
+{
+
+}
+
+crds* getLegalMovesBishop(crds* space)
+{
+
+}
+
+crds* getLegalMovesQueen(crds* space)
+{
+
+}
+
+crds* getLegalMovesKing(crds* space)
+{
+
+}
+
+crds* chessToCrds(char col, char row)
+{
+	crds* ret = (crds*) malloc(sizeof(crds));
+	(*ret).row = 8 - row;
+	(*ret).col = col - 97;
+	return ret;
+}
+
+void move(char srccol, char srcrow, char destcol, char destrow)
+{
+	board[destrow][destcol].side = board[srcrow][srccol].side;
+	board[destrow][destcol].type = board[srcrow][srccol].type;
+	board[srcrow][srccol].type = NOTYPE;
+	board[srcrow][srccol].side = EMPTY;
+}
+
+void moveCrds(char srccol, char srcrow, char destcol, char destrow)
+{
+	crds* srcCrds = chessToCrds(srccol, srcrow);
+	crds* destCrds = chessToCrds(destcol, destrow);
+
+	move(srcCrds->col, srcCrds->row, destCrds->col, destCrds->row);
+}
+
 int main()
 {
 	initNames();
 
-	board = initBoard();
+	initBoard();
 
 	//printf("%d\n", (*(board + 6) + 7)->type);
 
 	printBoard();
 
-	
-	FILE *f = fopen("board.bmp", "w");
-	BMPmake();
-	BMPwrite();
+	crds* var = (crds*) malloc(sizeof(crds));
+	(*var).row = 6;
+	(*var).col = 4;
+
+	crds* var2 = getLegalMoves(var);
+
+	i = 0;
+	while((*(var2+i)).row != -1)
+	{
+		printf("%c%d\n", (*(var2+i)).col+'a', 8-(*(var2+i)).row);
+		i+=1;
+	}
+
+	moveCrds('e',7,'e',5);
+	moveCrds('d',7,'d',5);
+	moveCrds('f',7,'f',5);
+	moveCrds('e',2,'e',4);
+	printBoard();
+
+	var = chessToCrds('e',4);
+	var2 = getLegalMoves(var);
+
+	i=0;
+	//printf("%d\n",8-(*(var2+i)).row);
+	while((*(var2+i)).row != -1)
+	{
+		printf("%c%d\n", (*(var2+i)).col+'a', 8-(*(var2+i)).row);
+		i+=1;
+	}
 }
 
 
