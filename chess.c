@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "chess.h"
 
 #define ANSI_COLOR_RED     "\x1b[31m"		//https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -8,41 +9,6 @@
 
 char bitmap[1000];
 int i, j;
-
-void moveCrds(char, short int, char, short int);
-
-enum PieceNum{
-	EMPTY,
-	PAWN,
-	ROOK,
-	KNIGHT,
-	BISHOP,
-	QUEEN,
-	KING
-};
-
-enum Side {
-	NOTYPE,
-	WHITE,
-	BLACK
-};
-
-typedef struct
-{
-	char side;
-	char type;
-} Piece;
-
-typedef struct {
-	 short int row;
-	 short int col;
-} crds;
-
-typedef struct
-{
-	char abbrev;
-	char * fullName;
-} PieceName;
 
 PieceName* names;
 Piece board[8][8];
@@ -118,8 +84,6 @@ void printBoard(void)
 	}
 }
 
-crds* getLegalMovesPawn(crds*);
-
 crds* getLegalMoves(crds* space)
 {
 	if(board[space->row][space->col].type == PAWN)
@@ -184,7 +148,7 @@ crds* getLegalMovesPawn(crds* space)
 		}
 		if(col > 0)
 		{
-			if(board[row+1][col-1].side == BLACK)		// Up 1 and to the right
+			if(board[row+1][col-1].side == WHITE)		// Up 1 and to the right
 			{
 				ret[spot].row = row + 1;
 				ret[spot].col = col - 1;
@@ -193,7 +157,7 @@ crds* getLegalMovesPawn(crds* space)
 		}
 		if(col < 7)
 		{
-			if(board[row+1][col+1].side == BLACK)		// Up 1 and to the left
+			if(board[row+1][col+1].side == WHITE)		// Up 1 and to the left
 			{
 				ret[spot].row = row - 1;
 				ret[spot].col = col + 1;
