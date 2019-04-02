@@ -9,91 +9,7 @@
 char bitmap[1000];
 int i, j;
 
-void BMPmake()
-{
-    // -- FILE HEADER -- //
-
-    // bitmap signature
-    bitmap[0] = 'B';
-    bitmap[1] = 'M';
-
-    // file size
-    bitmap[2] = 66; // 40 + 14 + 12
-    bitmap[3] = 0;
-    bitmap[4] = 0;
-    bitmap[5] = 0;
-
-    // reserved field (in hex. 00 00 00 00)
-    for(int i = 6; i < 10; i++) bitmap[i] = 0;
-
-    // offset of pixel data inside the image
-	bitmap[10]=54;
-	//bitmap[11]=6;
-    for(int i = 11; i < 14; i++) bitmap[i] = 0;
-
-    // -- BITMAP HEADER -- //
-
-    // header size
-    bitmap[14] = 40;
-    for(int i = 15; i < 18; i++) bitmap[i] = 0;
-
-    // width of the image
-    bitmap[18] = 4;
-    for(int i = 19; i < 22; i++) bitmap[i] = 0;
-
-    // height of the image
-    bitmap[22] = 1;
-    for(int i = 23; i < 26; i++) bitmap[i] = 0;
-
-    // reserved field
-    bitmap[26] = 1;
-    bitmap[27] = 0;
-
-    // number of bits per pixel
-    bitmap[28] = 24; // 3 byte
-    bitmap[29] = 0;
-
-    // compression method (no compression here)
-    for(int i = 30; i < 34; i++) bitmap[i] = 0;
-
-    // size of pixel data
-    bitmap[34] = 21; // 12 bits => 4 pixels
-    bitmap[35] = 0;
-    bitmap[36] = 0;
-    bitmap[37] = 0;
-
-    // horizontal resolution of the image - pixels per meter (2835)
-    bitmap[39] = 0;
-    bitmap[38] = 0;
-    bitmap[40] = 0x30;//0b00110000;
-    bitmap[41] = 0xB1;//0b10110001;
-
-    // vertical resolution of the image - pixels per meter (2835)
-    bitmap[42] = 0;
-    bitmap[43] = 0;
-    bitmap[44] = 0x30; //0b00110000;
-    bitmap[45] = 0xB1; //0b10110001;
-
-    // color pallette information
-    for(int i = 46; i < 50; i++) bitmap[i] = 0;
-
-    // number of important colors
-    for(int i = 50; i < 54; i++) bitmap[i] = 0;
-
-    // -- PIXEL DATA -- //
-    for(int i = 54; i < 69; i++) bitmap[i] = 255;
-}
-
-void BMPwrite()
-{
-    FILE *file;
-    file = fopen("bitmap.bmp", "w+");
-    for(int i = 0; i < 66; i++)
-    {
-        fputc(bitmap[i], file);
-    }
-    fclose(file);
-}
+void moveCrds(char, short int, char, short int);
 
 enum PieceNum{
 	EMPTY,
@@ -118,8 +34,8 @@ typedef struct
 } Piece;
 
 typedef struct {
-	 int row;
-	 int col;
+	 short int row;
+	 short int col;
 } crds;
 
 typedef struct
@@ -216,8 +132,8 @@ crds* getLegalMovesPawn(crds* space)
 {
 	Piece pawn = board[space->row][space->col];
 	crds* ret = (crds *) malloc(sizeof(crds)*5);
-	 int row = space->row;
-	 int col = space->col;
+	short int row = space->row;
+	short int col = space->col;
 
 	int spot = 0;
 
@@ -225,40 +141,89 @@ crds* getLegalMovesPawn(crds* space)
 	{
 		if(board[row-1][col].type == EMPTY)
 		{
-			(*ret).row = row-1;
-			(*ret).col = col;
+			ret[0].row = row-1;
+			ret[0].col = col;
 			spot+=1;
 		}
-		if(space->col > 0)
+		if(col > 0)
 		{
 			if(board[row-1][col-1].side == BLACK)		// Up 1 and to the left
 			{
-				(*(ret+spot)).row = row-1;
-				(*(ret+spot)).col = col-1;
+				ret[spot].row = row-1;
+				ret[spot].col = col-1;
 				spot+=1;
 			}
 		}
-		if(space->col < 7)
+		if(col < 7)
 		{
 			if(board[row-1][col+1].side == BLACK)		// Up 1 and to the right
 			{
-				(*(ret+spot)).row = row-1;
-				(*(ret+spot)).col = col+1;
+				ret[spot].row = row-1;
+				ret[spot].col = col+1;
 				spot+=1;
 			}
 		}
-		if(space->row == 6 && board[row-2][col].type == EMPTY && board[row-1][col].type == EMPTY)	//two spots above are clear
+		if( space->row == 6
+			&& board[row-2][col].type == EMPTY 
+			&& board[row-1][col].type == EMPTY)			//two spots above are clear
 		{
-				(*(ret+spot)).row = row-2;
-				(*(ret+spot)).col = col;
+				ret[spot].row = row-2;
+				ret[spot].col = col;
 				spot+=1;
 		}
-
-		(*(ret+spot)).row = -1;
-		(*(ret+spot)).col = -1;
-
+		ret[spot].row =  -1;
+		ret[spot].col = -1;
+	}
+	else												//Pawn is black
+	{
+		if(board[row+1][col].type == EMPTY)
+		{
+			ret[0].row = row + 1;
+			ret[0].col = col;
+			spot+=1;
+		}
+		if(col > 0)
+		{
+			if(board[row+1][col-1].side == BLACK)		// Up 1 and to the right
+			{
+				ret[spot].row = row + 1;
+				ret[spot].col = col - 1;
+				spot+=1;
+			}
+		}
+		if(col < 7)
+		{
+			if(board[row+1][col+1].side == BLACK)		// Up 1 and to the left
+			{
+				ret[spot].row = row - 1;
+				ret[spot].col = col + 1;
+				spot+=1;
+			}
+		}
+		if( space->row == 1
+			&& board[row+2][col].type == EMPTY 
+			&& board[row+1][col].type == EMPTY)			//two spots above are clear
+		{
+				ret[spot].row = row+2;
+				ret[spot].col = col;
+				spot+=1;
+		}
+		ret[spot].row =  -1;
+		ret[spot].col = -1;
 	}
 	return ret;
+}
+
+void printLegalMoves(crds* spot)
+{
+	crds* legal_moves = getLegalMoves(spot);
+
+	i = 0;
+	while(legal_moves[i].row != -1)
+	{
+		printf("%c%d\n", legal_moves[i].col+'a', 8-legal_moves[i].row);
+		i+=1;
+	}
 }
 
 crds* getLegalMovesRook(crds* space)
@@ -286,7 +251,7 @@ crds* getLegalMovesKing(crds* space)
 
 }
 
-crds* chessToCrds(char col, char row)
+crds* chessToCrds(char col, short int row)
 {
 	crds* ret = (crds*) malloc(sizeof(crds));
 	(*ret).row = 8 - row;
@@ -294,7 +259,28 @@ crds* chessToCrds(char col, char row)
 	return ret;
 }
 
-void move(char srccol, char srcrow, char destcol, char destrow)
+void flush()
+{
+	char c;
+	while((c = getchar()) != '\n' && c != EOF);
+}
+
+crds* getMove()
+{
+	char srccol, destcol;
+	short int srcrow, destrow;
+
+	//printf("Enter a move (ex. e2 e4):\n");
+	printf("Enter a move: ");
+	scanf("%c%hu %c%hu", &srccol, &srcrow, &destcol, &destrow);
+	flush();
+
+	crds* dest = chessToCrds(destcol, destrow);
+	moveCrds(srccol, srcrow, destcol, destrow);
+	return dest;
+}
+
+void move(short int srccol, short int srcrow, short int destcol, short int destrow)
 {
 	board[destrow][destcol].side = board[srcrow][srccol].side;
 	board[destrow][destcol].type = board[srcrow][srccol].type;
@@ -302,52 +288,34 @@ void move(char srccol, char srcrow, char destcol, char destrow)
 	board[srcrow][srccol].side = EMPTY;
 }
 
-void moveCrds(char srccol, char srcrow, char destcol, char destrow)
+void moveCrds(char srccol, short int srcrow, char destcol, short int destrow)
 {
 	crds* srcCrds = chessToCrds(srccol, srcrow);
 	crds* destCrds = chessToCrds(destcol, destrow);
-
 	move(srcCrds->col, srcCrds->row, destCrds->col, destCrds->row);
 }
 
 int main()
 {
 	initNames();
-
 	initBoard();
-
-	//printf("%d\n", (*(board + 6) + 7)->type);
-
 	printBoard();
 
-	crds* var = (crds*) malloc(sizeof(crds));
-	(*var).row = 6;
-	(*var).col = 4;
+	crds* current_spot = (crds *) malloc(sizeof(crds));
 
-	crds* var2 = getLegalMoves(var);
+	char ans;
+	printf("Would you like to enter a move (y/n)? ");
+	ans = getchar();
+	flush();
 
-	i = 0;
-	while((*(var2+i)).row != -1)
+	while(ans != 'n')
 	{
-		printf("%c%d\n", (*(var2+i)).col+'a', 8-(*(var2+i)).row);
-		i+=1;
-	}
-
-	moveCrds('e',7,'e',5);
-	moveCrds('d',7,'d',5);
-	moveCrds('f',7,'f',5);
-	moveCrds('e',2,'e',4);
-	printBoard();
-
-	var = chessToCrds('e',4);
-	var2 = getLegalMoves(var);
-
-	i=0;
-	//printf("%d\n",8-(*(var2+i)).row);
-	while((*(var2+i)).row != -1)
-	{
-		printf("%c%d\n", (*(var2+i)).col+'a', 8-(*(var2+i)).row);
-		i+=1;
+		current_spot = getMove();
+		printBoard();
+		printLegalMoves(current_spot);
+		printf("Would you like to enter another move (y/n)? ");
+		ans = getchar();
+		flush();
 	}
 }
 
