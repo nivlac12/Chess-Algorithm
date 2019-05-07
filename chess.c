@@ -252,7 +252,7 @@ crds* getLegalMovesPawn(crds* space)
 void printLegalMoves(crds* spot)
 {
 	crds* legal_moves = getLegalMoves(spot);
-
+	printf("Move: %c%d\n", spot->col + 'a', 8-spot->row);
 	Piece* piece;
 	i = 0;
 	while(legal_moves[i].row != -1)
@@ -646,7 +646,7 @@ void moveCrds(char srccol, short int srcrow, char destcol, short int destrow)
 
 MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value)
 {
-	if(depth < 3)
+	if(depth < 4)
 	{
 		/*************************************
 		Part 1, search all the legal moves
@@ -706,7 +706,10 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 
 			MoveValTuple* temp_tuple = testMoves(depth+1, other_side, !max, 0);
 			value_of_move[a] = temp_tuple->val;
-			/*if(max && best_or_worst > )
+			if(max && best_or_worst > )
+			{
+				
+			}
 			else if(!max && best_or_worst < )
 			if(max)
 			{
@@ -721,7 +724,7 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 				{
 					break;
 				}
-			}*/
+			}
 		
 			move(destcol, destrow, srccol, srcrow);
 			if(piece_type != EMPTY)
@@ -850,23 +853,38 @@ int main()
 	MoveValTuple* computer_move_tuple;
 	MoveTuple* computer_move;
 
-	while(ans != 'n')
+	while(ans != 'q')
 	{
 		if(global_side == WHITE)
 		{
-			printf("Would you like to enter a move (y/n)? ");
+			printf("Enter\n'm' to move a piece,\n'l' to see legal moves from a spot,\n'q' to quit\nSelection: ");
+			//printf("Would you like to enter a move (y/n)? ");
 			ans = getchar();
 			flush();
-			if(ans != 'n')
+			if(ans == 'm')
 			{
-			current_spot = getMove();
-			printLegalMoves(current_spot);
+				current_spot = getMove();
+				printLegalMoves(current_spot);
+			}
+			else if(ans == 'l')
+			{
+				char srccol;
+				short int srcrow;
+				crds* src;
+				printf("Enter a spot: ");
+				scanf("%c%hu", &srccol, &srcrow);
+				flush();
+				src = chessToCrds(srccol, srcrow);
+				printLegalMoves(src);
+			}
+			else if(ans != 'q')
+			{
+				printf("Not a valid selection\n");
 			}
 		}	
 		else
 		{
 			char current_side = global_side;
-			printf("The global side is %s\n", global_side == WHITE ? "White" : "Black");
 			computer_move_tuple = testMoves(0, global_side, 1, 0);
 			computer_move = computer_move_tuple->t;
 			move(computer_move->src->col, computer_move->src->row, computer_move->dest->col, computer_move->dest->row);
