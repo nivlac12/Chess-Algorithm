@@ -680,7 +680,6 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 			}
 		}
 		legal_moves_list[spot_in_list]->dest->row = -1;
-		value_of_move[spot_in_list] = -500;
 
 		//printf("Done with part 1\n");
 		/*************************************
@@ -690,10 +689,11 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 		short int srccol, srcrow, destcol, destrow;
 		char piece_type;
 
-		int best_or_worst = max ?  -300 : 300;
+		int best_or_worst_temp = max ?  500 : -500;
 
 		int count = 0;
-		for(int a = 0; legal_moves_list[a]->dest->row != -1; a++)
+		int a = 0;
+		for(a = 0; legal_moves_list[a]->dest->row != -1; a++)
 		{
 			srcrow = legal_moves_list[a]->src->row;
 			srccol = legal_moves_list[a]->src->col;
@@ -704,54 +704,62 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 			move(srccol, srcrow, destcol, destrow);
 			//printBoard();
 
-			MoveValTuple* temp_tuple = testMoves(depth+1, other_side, !max, 0);
-			value_of_move[a] = temp_tuple->val;
-			if(max && best_or_worst > )
-			{
-				
-			}
-			else if(!max && best_or_worst < )
-			if(max)
-			{
-				if(temp_tuple->val > best_or_worst_value)
-				{
-					break;
-				}
-			}
-			else
-			{
-				if(temp_tuple->val < best_or_worst_value)
-				{
-					break;
-				}
-			}
-		
+			MoveValTuple* temp_tuple = testMoves(depth+1, other_side, !max, best_or_worst_temp);
+			value_of_move[a] = temp_tuple->val;		
 			move(destcol, destrow, srccol, srcrow);
+
 			if(piece_type != EMPTY)
 			{
 				board[destrow][destcol].type = piece_type;
 				board[destrow][destcol].side = other_side;
 			}
+			/*if(max)
+			{
+				if(temp_tuple->val > best_or_worst_value)
+				{
+					break;
+				}
+				if(temp_tuple->val > best_or_worst_temp)
+				{
+					best_or_worst_temp = temp_tuple->val;
+				}
+			}
+			else	//min
+			{
+				if(temp_tuple->val < best_or_worst_value)
+				{
+					break;
+				}
+				if(temp_tuple->val < best_or_worst_temp)
+				{
+					best_or_worst_temp = temp_tuple->val;
+				}
+			}*/
 			//sleep(1);
 
 		}
-		//printf("Done with part 2\n");
+		value_of_move[a] = -1000;	//Because of alpha-beta pruning, this will cause the algorithm to stop at the right moment
+
 		/*************************************
 		Part 3, undo move but find the best value
 		*************************************/
-		int best_val = max ? -300 : 300;
+		int best_val = max ? -500 : 500;
 		int best_index = 0;
-		for(int i = 0; value_of_move[i] != -500;i++)
+		if(max)
 		{
-			if(max)
+			for(int i = 0; value_of_move[i] != -1000;i++)
 			{
 				if(value_of_move[i]>best_val)
 				{
 					best_val = value_of_move[i];
 					best_index = i;
 				}
+				//printf("Value of moving %c%d to %c%d is %d\n", 'a'+legal_moves_list[i]->src->col, 8-legal_moves_list[i]->src->row, 'a'+legal_moves_list[i]->dest->col, 8-legal_moves_list[i]->dest->row, value_of_move[i]);
 			}
-			else
+		}
+		else
+		{
+			for(int i = 0; value_of_move[i] != -1000;i++)
 			{
 				if(value_of_move[i]<best_val)
 				{
@@ -759,7 +767,6 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 					best_index = i;
 				}
 			}
-			//printf("Value of moving %c%d to %c%d is %d\n", 'a'+legal_moves_list[i]->src->col, 8-legal_moves_list[i]->src->row, 'a'+legal_moves_list[i]->dest->col, 8-legal_moves_list[i]->dest->row, value_of_move[i]);
 		}
 		MoveValTuple* vt = (MoveValTuple*) malloc(sizeof(MoveValTuple));
 		vt->t = legal_moves_list[best_index];
@@ -782,14 +789,14 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 int evalFunc(char side)
 {
 	int total = 0;
-	char other_side = (side == WHITE) ? BLACK : WHITE;
+	char other_side = (global_side == WHITE) ? BLACK : WHITE;
 	crds pos;
 	crds* legal_moves;
 	for(int k = 0; k<8; k++)
 	{
 		for(int l = 0; l<8; l++)
 		{
-			if(board[k][l].side == side)
+			if(board[k][l].side == global_side)
 			{
 				pos.row = k;
 				pos.col = l;
@@ -879,13 +886,13 @@ int main()
 			}
 			else if(ans != 'q')
 			{
-				printf("Not a valid selection\n");
+				printf("Not a valid selection\n\n");
 			}
 		}	
 		else
 		{
 			char current_side = global_side;
-			computer_move_tuple = testMoves(0, global_side, 1, 0);
+			computer_move_tuple = testMoves(0, global_side, 1, 500);
 			computer_move = computer_move_tuple->t;
 			move(computer_move->src->col, computer_move->src->row, computer_move->dest->col, computer_move->dest->row);
 			global_side = global_side == WHITE ? BLACK : WHITE;
