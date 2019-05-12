@@ -140,27 +140,29 @@ void printBoard(void)
 
 crds* getLegalMoves(crds* space)
 {
-	if(board[space->row][space->col].type == PAWN)
+	switch (board[space->row][space->col].type)
 	{
+	case PAWN:
+		return getLegalMovesPawn(space);
+		break;
+	case ROOK:
+		return getLegalMovesRook(space);
+		break;
+	case BISHOP:
+		return getLegalMovesBishop(space);
+		break;
+	case QUEEN:
+		return getLegalMovesQueen(space);
+		break;
+	case KNIGHT:
+		return getLegalMovesKnight(space);
+		break;
+	case KING:
+		return getLegalMovesKing(space);
+		break;
+	default:
 		return getLegalMovesPawn(space);
 	}
-	else if(board[space->row][space->col].type == ROOK)
-	{
-		return getLegalMovesRook(space);
-	}
-	else if(board[space->row][space->col].type == BISHOP)
-	{
-		return getLegalMovesBishop(space);
-	}
-	else if(board[space->row][space->col].type == QUEEN)
-	{
-		return getLegalMovesQueen(space);
-	}
-	else if(board[space->row][space->col].type == KNIGHT)
-	{
-		return getLegalMovesKnight(space);
-	}
-	return getLegalMovesKing(space);
 }
 
 crds* getLegalMovesPawn(crds* space)
@@ -994,6 +996,7 @@ void runAgainstComputer(char player_side)
 			{
 				current_spot = getMove();
 				printLegalMoves(current_spot);
+				printf("\n");
 			}
 			else if(ans == 'l')
 			{
@@ -1024,6 +1027,7 @@ void runAgainstComputer(char player_side)
 			}
 			move(computer_move->src->col, computer_move->src->row, computer_move->dest->col, computer_move->dest->row);
 			global_side = global_side == WHITE ? BLACK : WHITE;
+			printf("Computer Move: %c%d %c%d\n", computer_move->src->col + 'a', 8-computer_move->src->row, computer_move->dest->col + 'a', 8-computer_move->dest->row);
 			printBoard();
 			printf("The computer examined %d total moves\n", moves_taken);
 		}
@@ -1051,6 +1055,7 @@ int main()
 		printf("Enter 1 to play as white, or 2 to play as black: ");
 		ans = getchar();
 		flush();
+		printBoard();
 		runAgainstComputer(ans == '1' ? WHITE : BLACK);
 	}
 }
