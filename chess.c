@@ -1035,7 +1035,6 @@ int main()
 	initNames();
 	initHash();
 	initBoard();
-	printBoard();
 	global_side = WHITE;
 
 	crds* current_spot = (crds *) malloc(sizeof(crds));
