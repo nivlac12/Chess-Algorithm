@@ -10,7 +10,7 @@
 #define ANSI_COLOR_RESET   "\033[0m"
 
 char bitmap[1000];
-int i, j;
+int i, j, moves_taken;
 char global_side;
 
 PieceName* names;
@@ -97,7 +97,7 @@ void initNames(void)
 	(names)->val = 0;
 	(names + 1)->val = 5;
 	(names + 2)->val = 25;
-	(names + 3)->val = 15;
+	(names + 3)->val = 13;
 	(names + 4)->val = 15;
 	(names + 5)->val = 45;
 	(names + 6)->val = 300;
@@ -569,6 +569,28 @@ crds* getLegalMovesKing(crds* space)
 	spotValid(row  , col-1, other_side, ret, &spot);
 	spotValid(row+1, col  , other_side, ret, &spot);
 	spotValid(row-1, col  , other_side, ret, &spot);
+
+	/*	Check for castle */
+	short int side = board[row][col].side;
+	if(side == WHITE)
+	{
+		if(row == 7 && col == 4 && board[7][5].type == EMPTY && board[7][6].type == EMPTY && board[7][7].type == ROOK)
+		{
+			ret[spot].row = 9;
+			ret[spot].col = 9;
+			spot++;
+		}
+	}	
+	else
+	{
+		if(row == 0 && col == 4 && board[0][5].type == EMPTY && board[0][6].type == EMPTY && board[0][7].type == ROOK)
+		{
+			ret[spot].row = 9;
+			ret[spot].col = 9;
+			spot++;
+		}
+	}
+
 	ret[spot].row = -1;
 	ret[spot].col = -1;
 	return ret;
@@ -595,7 +617,9 @@ crds* getMove()
 	short int srcrow, destrow;
 	crds *src, *dest, *legal_moves;
 	int askAgain = 1;
-
+	char castle_white = 0;
+	char castle_black = 0;
+	
 	while(askAgain)
 	{
 		//printf("Enter a move (ex. e2 e4):\n");
@@ -607,10 +631,24 @@ crds* getMove()
 		dest = chessToCrds(destcol, destrow);
 		legal_moves = getLegalMoves(src);
 
+
 		if(board[src->row][src->col].side == global_side)
 		{
 			for(i = 0; legal_moves[i].row != -1; i++)
 			{
+				if(legal_moves[i].row == 9 && legal_moves[i].col == 9)
+				{
+					if(board[src->row][src->col].side == WHITE && destcol == 'g' && destrow == 1)
+					{
+						askAgain = 0;
+						castle_white = 1;
+					}
+					if(board[src->row][src->col].side == BLACK && destcol == 'g' && destrow == 8)
+					{
+						askAgain = 0;
+						castle_black = 1;
+					}
+				}
 				if(legal_moves[i].row == dest->row && legal_moves[i].col == dest->col)
 				{
 					askAgain = 0;
@@ -623,7 +661,23 @@ crds* getMove()
 		}
 	}
 
-	moveCrds(srccol, srcrow, destcol, destrow);
+	if(castle_white)
+	{
+		printf("CASTLE\n\n");
+		move(4,7,6,7);
+		move(7,7,5,7);
+	}
+	else if(castle_black)
+	{
+		printf("CASTLE\n\n");
+		move(4,0,6,0);
+		move(7,0,5,0);
+	}
+	else moveCrds(srccol, srcrow, destcol, destrow);
+	if((dest->row == 7 || dest->row == 0) && board[dest->row][dest->col].type == PAWN)
+	{
+		board[dest->row][dest->col].type = QUEEN;
+	}
 	global_side = (global_side == WHITE) ? BLACK : WHITE;
 	return dest;
 }
@@ -644,7 +698,7 @@ void moveCrds(char srccol, short int srcrow, char destcol, short int destrow)
 }
 
 
-MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value)
+MoveValTuple* testMoves(char depth, char side, char max, char tested_already, int best_or_worst_value, int value_before_move)
 {
 	if(depth < 4)
 	{
@@ -689,35 +743,78 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 		short int srccol, srcrow, destcol, destrow;
 		char piece_type;
 
-		int best_or_worst_temp = max ?  500 : -500;
+		int best_or_worst_temp = max ?  -700 : 700;
 
 		int count = 0;
 		int a = 0;
+		char pawn_promoted = 0;
+		int current_value = evalFunc(0);
+
 		for(a = 0; legal_moves_list[a]->dest->row != -1; a++)
 		{
+			moves_taken++;
 			srcrow = legal_moves_list[a]->src->row;
 			srccol = legal_moves_list[a]->src->col;
 			destrow = legal_moves_list[a]->dest->row;
 			destcol = legal_moves_list[a]->dest->col;
-			piece_type = board[destrow][destcol].type;
+			piece_type = (srccol == 9) ? EMPTY : board[destrow][destcol].type;
 			//printf("Moving %c%d to %c%d, we are currently at depth %d, legal move %d\n", srccol+'a', 8-srcrow, destcol+'a', 8-destrow, depth, a);
-			move(srccol, srcrow, destcol, destrow);
-			//printBoard();
+			if(srccol == 9 && srcrow == 9)		//Check for kingside castle
+			{
+				if(side == WHITE)
+				{
+					move(4,7,6,7);
+					move(7,7,5,7);
+				}
+				else
+				{
+					move(4,0,6,0);
+					move(7,0,5,0);
+				}
+			}
 
-			MoveValTuple* temp_tuple = testMoves(depth+1, other_side, !max, best_or_worst_temp);
-			value_of_move[a] = temp_tuple->val;		
-			move(destcol, destrow, srccol, srcrow);
+			else move(srccol, srcrow, destcol, destrow);	//regular move
+
+			if(board[destrow][destcol].type == PAWN && (destrow == 0 || destrow == 7))	//check for pawn promotion
+			{
+				board[destrow][destcol].type = QUEEN;
+				pawn_promoted = 1;;
+			}
+			MoveValTuple* temp_tuple = testMoves(depth+1, other_side, !max, tested_already, best_or_worst_temp, current_value);
+			value_of_move[a] = temp_tuple->val;	
+			if(srccol == 9 && srcrow == 9)		//Check for kingside castle
+			{
+				if(side == WHITE)
+				{
+					move(6,7,4,7);
+					move(5,7,7,7);
+				}
+				else
+				{
+					move(6,0,4,0);
+					move(5,0,7,0);
+				}
+			}	
+			else move(destcol, destrow, srccol, srcrow);	//otherwise undo the move regularly
+
+			if(pawn_promoted)
+			{
+				pawn_promoted = 0;
+				board[srcrow][srccol].type = PAWN;
+			}
 
 			if(piece_type != EMPTY)
 			{
 				board[destrow][destcol].type = piece_type;
 				board[destrow][destcol].side = other_side;
 			}
-			/*if(max)
+			if(max)
 			{
 				if(temp_tuple->val > best_or_worst_value)
 				{
-					break;
+					MoveValTuple*  vt_temp = (MoveValTuple *) malloc(sizeof(MoveValTuple));
+					vt_temp->val = temp_tuple->val;
+					return vt_temp;
 				}
 				if(temp_tuple->val > best_or_worst_temp)
 				{
@@ -728,14 +825,15 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 			{
 				if(temp_tuple->val < best_or_worst_value)
 				{
-					break;
+					MoveValTuple*  vt_temp = (MoveValTuple *) malloc(sizeof(MoveValTuple));
+					vt_temp->val = temp_tuple->val;
+					return vt_temp;
 				}
 				if(temp_tuple->val < best_or_worst_temp)
 				{
 					best_or_worst_temp = temp_tuple->val;
 				}
-			}*/
-			//sleep(1);
+			}
 
 		}
 		value_of_move[a] = -1000;	//Because of alpha-beta pruning, this will cause the algorithm to stop at the right moment
@@ -743,7 +841,7 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 		/*************************************
 		Part 3, undo move but find the best value
 		*************************************/
-		int best_val = max ? -500 : 500;
+		int best_val = max ? -700 : 700;
 		int best_index = 0;
 		if(max)
 		{
@@ -754,7 +852,6 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 					best_val = value_of_move[i];
 					best_index = i;
 				}
-				//printf("Value of moving %c%d to %c%d is %d\n", 'a'+legal_moves_list[i]->src->col, 8-legal_moves_list[i]->src->row, 'a'+legal_moves_list[i]->dest->col, 8-legal_moves_list[i]->dest->row, value_of_move[i]);
 			}
 		}
 		else
@@ -771,17 +868,20 @@ MoveValTuple* testMoves(char depth, char side, char max, int best_or_worst_value
 		MoveValTuple* vt = (MoveValTuple*) malloc(sizeof(MoveValTuple));
 		vt->t = legal_moves_list[best_index];
 		vt->val = best_val;
-		//free(legal_moves_list);
-		//free(temp);
+		//printf("The best value found (depth %d) was %d, the move is %c%d %c%d\n", depth, value_of_move[best_index], vt->t->src->col + 'a', 8-vt->t->src->row, vt->t->dest->col + 'a', 8-vt->t->dest->row);
 
 		return vt;
 	}
 	else
 	{
-		//printf("Made it to switzerland\n");
 		MoveValTuple*  vt = (MoveValTuple *) malloc(sizeof(MoveValTuple));
-		vt->val = evalFunc(side == WHITE ? BLACK : WHITE);
-		//printf("Returning from eval function with weight %d\n", vt->val);
+		int val = evalFunc(side == WHITE ? BLACK : WHITE);
+		vt->val = val;
+		int prev_minus_current = value_before_move - val;
+		if(!tested_already && (val >= 15 || val <= -15))
+		{
+			vt = testMoves(depth-1, side, max, 1, best_or_worst_value, val);
+		}
 		return vt;
 	}
 }
@@ -805,7 +905,7 @@ int evalFunc(char side)
 				{
 					total += val_hash[legal_moves[a].row][legal_moves[a].col];
 				}
-				total+=names[board[k][l].type].val + val_hash[k][l];
+				total+=names[board[k][l].type].val + (val_hash[k][l]);
 			}
 			else if(board[k][l].side == other_side)
 			{
@@ -816,7 +916,7 @@ int evalFunc(char side)
 				{
 					total -= val_hash[legal_moves[a].row][legal_moves[a].col];
 				}
-				total -= val_hash[k][l];
+				total -= (val_hash[k][l]);
 				total -= names[board[k][l].type].val;
 			}
 		}
@@ -843,26 +943,48 @@ int appendList(crds* src, MoveTuple** main_list, int starting_spot, short int ro
  	return starting_spot;
 }
 
-
-int main()
+void runPVP()
 {
-	initNames();
-	initHash();
-	initBoard();
-	printBoard();
-	global_side = WHITE;
-
 	crds* current_spot = (crds *) malloc(sizeof(crds));
-
-	char ans;
-	//printf("Would you like to enter a move (y/n)? ");
-	ans = 'y';
-	MoveValTuple* computer_move_tuple;
-	MoveTuple* computer_move;
-
+	char ans = 0;
 	while(ans != 'q')
 	{
-		if(global_side == WHITE)
+		printf("\nIt is %s's turn, Enter\n'm' to move a piece,\n'l' to see legal moves from a spot,\n'q' to quit\nSelection: ", global_side == WHITE ? "White" : "Black");
+		//printf("Would you like to enter a move (y/n)? ");
+		ans = getchar();
+		flush();
+		if(ans == 'm')
+		{
+			current_spot = getMove();
+			printLegalMoves(current_spot);
+		}
+		else if(ans == 'l')
+		{
+			char srccol;
+			short int srcrow;
+			crds* src;
+			printf("Enter a spot: ");
+			scanf("%c%hu", &srccol, &srcrow);
+			flush();
+			src = chessToCrds(srccol, srcrow);
+			printLegalMoves(src);
+		}
+		else if(ans != 'q')
+		{
+			printf("Not a valid selection\n\n");
+		}
+	}	
+}
+
+void runAgainstComputer(char player_side)
+{
+	char ans = 0;
+	crds* current_spot = (crds *) malloc(sizeof(crds));
+	MoveValTuple* computer_move_tuple;
+	MoveTuple* computer_move;
+	while(ans != 'q')
+	{
+		if(global_side == player_side)
 		{
 			printf("Enter\n'm' to move a piece,\n'l' to see legal moves from a spot,\n'q' to quit\nSelection: ");
 			//printf("Would you like to enter a move (y/n)? ");
@@ -892,12 +1014,45 @@ int main()
 		else
 		{
 			char current_side = global_side;
-			computer_move_tuple = testMoves(0, global_side, 1, 500);
+			moves_taken = 0;
+			computer_move_tuple = testMoves(0, global_side, 1, 0, 700, evalFunc(0));
 			computer_move = computer_move_tuple->t;
+			if(computer_move->dest->row == 9 && computer_move->dest->col == 9)
+			{
+				move(6,0,4,0);
+				move(5,0,7,0);
+			}
 			move(computer_move->src->col, computer_move->src->row, computer_move->dest->col, computer_move->dest->row);
 			global_side = global_side == WHITE ? BLACK : WHITE;
 			printBoard();
+			printf("The computer examined %d total moves\n", moves_taken);
 		}
+	}
+}
+
+int main()
+{
+	initNames();
+	initHash();
+	initBoard();
+	printBoard();
+	global_side = WHITE;
+
+	crds* current_spot = (crds *) malloc(sizeof(crds));
+	char ans;
+	printf("Enter 1 to play against computer, or 2 to play a two person game: ");
+	ans = getchar();
+	flush();
+	if(ans == '2')
+	{
+		runPVP();
+	}
+	else if (ans == '1')
+	{
+		printf("Enter 1 to play as white, or 2 to play as black: ");
+		ans = getchar();
+		flush();
+		runAgainstComputer(ans == '1' ? WHITE : BLACK);
 	}
 }
 
