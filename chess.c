@@ -16,7 +16,7 @@ char global_side;
 PieceName* names;
 Piece board[8][8];
 int val_hash[8][8];
-
+int has_castled;
 void initBoard(void)
  {
  	for(i = 0; i < 8; i++)
@@ -638,7 +638,11 @@ crds* getMove()
 		{
 			for(i = 0; legal_moves[i].row != -1; i++)
 			{
-				if(legal_moves[i].row == 9 && legal_moves[i].col == 9)
+				if (legal_moves[i].row == dest->row && legal_moves[i].col == dest->col)
+				{
+					askAgain = 0;
+				}
+				else if(legal_moves[i].row == 9 && legal_moves[i].col == 9)
 				{
 					if(board[src->row][src->col].side == WHITE && destcol == 'g' && destrow == 1)
 					{
@@ -651,10 +655,6 @@ crds* getMove()
 						castle_black = 1;
 					}
 				}
-				if(legal_moves[i].row == dest->row && legal_moves[i].col == dest->col)
-				{
-					askAgain = 0;
-				}
 			}
 		}
 		if(askAgain)
@@ -665,6 +665,7 @@ crds* getMove()
 
 	if(castle_white)
 	{
+		has_castled = 1;
 		printf("CASTLE\n\n");
 		move(4,7,6,7);
 		move(7,7,5,7);
@@ -704,6 +705,10 @@ MoveValTuple* testMoves(char depth, char side, char max, char tested_already, in
 {
 	if(depth < 4)
 	{
+		if (has_castled)
+		{
+			//printf("here at depth %d\n", depth);
+		}
 		/*************************************
 		Part 1, search all the legal moves
 		*************************************/
@@ -812,7 +817,7 @@ MoveValTuple* testMoves(char depth, char side, char max, char tested_already, in
 			}
 			if(max)
 			{
-				if(temp_tuple->val > best_or_worst_value)
+				if(temp_tuple->val >= best_or_worst_value)
 				{
 					MoveValTuple*  vt_temp = (MoveValTuple *) malloc(sizeof(MoveValTuple));
 					vt_temp->val = temp_tuple->val;
@@ -825,7 +830,7 @@ MoveValTuple* testMoves(char depth, char side, char max, char tested_already, in
 			}
 			else	//min
 			{
-				if(temp_tuple->val < best_or_worst_value)
+				if(temp_tuple->val <= best_or_worst_value)
 				{
 					MoveValTuple*  vt_temp = (MoveValTuple *) malloc(sizeof(MoveValTuple));
 					vt_temp->val = temp_tuple->val;
@@ -870,8 +875,10 @@ MoveValTuple* testMoves(char depth, char side, char max, char tested_already, in
 		MoveValTuple* vt = (MoveValTuple*) malloc(sizeof(MoveValTuple));
 		vt->t = legal_moves_list[best_index];
 		vt->val = best_val;
-		//printf("The best value found (depth %d) was %d, the move is %c%d %c%d\n", depth, value_of_move[best_index], vt->t->src->col + 'a', 8-vt->t->src->row, vt->t->dest->col + 'a', 8-vt->t->dest->row);
-
+		if (has_castled)
+		{
+			printf("The best value found (depth %d) was %d, the move is %c%d %c%d\n", depth, value_of_move[best_index], vt->t->src->col + 'a', 8 - vt->t->src->row, vt->t->dest->col + 'a', 8 - vt->t->dest->row);
+		}
 		return vt;
 	}
 	else
@@ -1022,8 +1029,16 @@ void runAgainstComputer(char player_side)
 			computer_move = computer_move_tuple->t;
 			if(computer_move->dest->row == 9 && computer_move->dest->col == 9)
 			{
-				move(6,0,4,0);
-				move(5,0,7,0);
+				if (global_side == BLACK)
+				{
+					move(6, 0, 4, 0);
+					move(5, 0, 7, 0);
+				}
+				else
+				{
+					move(4, 7, 6, 7);
+					move(7, 7, 5, 7);
+				}
 			}
 			move(computer_move->src->col, computer_move->src->row, computer_move->dest->col, computer_move->dest->row);
 			global_side = global_side == WHITE ? BLACK : WHITE;
@@ -1039,8 +1054,8 @@ int main()
 	initNames();
 	initHash();
 	initBoard();
+	has_castled = 0;
 	global_side = WHITE;
-
 	crds* current_spot = (crds *) malloc(sizeof(crds));
 	char ans;
 	printf("Enter 1 to play against computer, or 2 to play a two person game: ");
